@@ -1,6 +1,25 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
+const permissionSchema = new Schema({
+    read: {
+        type: Boolean,
+        default: false,  
+    },
+    create: {
+        type: Boolean,
+        default: false,
+    },
+    update: {
+        type: Boolean,
+        default: false,
+    },
+    delete: {
+        type: Boolean,
+        default: false,
+    },
+}, { _id: false });
+
 const userSchema = new Schema({
     _id: Number,
     id : {
@@ -17,15 +36,17 @@ const userSchema = new Schema({
         type: String,
         required: true,
     },
-    isAdmin: {
-        type: Boolean,
-        default: false,
-    },
-    isGuest: {
-        type: Boolean,
-        default: false,
+    role: {
+        type: String,
+        enum: ['admin', 'user', 'guest'],
+        default: 'user',
     },
     expiryDate: Date,
+    permissions: {
+        type: Map,
+        of: permissionSchema,
+        default: {},
+    },
     createdAt: Date,
     createdBy: String,
     createdById: String,

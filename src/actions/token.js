@@ -18,8 +18,8 @@ const verifyExpiryDate = (expiryDate) => {
 };
 
 const issueToken = (user) => {
-    const { id, name, isAdmin, isGuest, expiryDate } = user;
-    const payload = { id, name, isAdmin, isGuest, expiryDate };
+    const { id, name, role, expiryDate, permissions } = user;
+    const payload = { id, name, role, expiryDate, permissions };
     return {
         user: payload,
         token: jsonwebtoken.sign(payload, SECRET_KEY, { expiresIn: '8h' }),
@@ -37,7 +37,7 @@ router.post('/token', async (req, res, next) => {
             error.status = 401;
             throw error;
         }
-        if (user.isGuest) {
+        if (user.role && user.role === 'guest') {
             verifyExpiryDate(user.expiryDate);
         }
         const token = issueToken(user);
@@ -60,7 +60,7 @@ router.post('/token/refresh', async (req, res, next) => {
                 resolve(decoded);
             });
         });
-        if (decoded.isGuest) {
+        if (decoded.role && decoded.role === 'guest') {
             verifyExpiryDate(decoded.expiryDate);
         }
         const token = issueToken(decoded);

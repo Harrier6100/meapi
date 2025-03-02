@@ -5,7 +5,9 @@ const logger = log4js.getLogger('access');
 const accessLogger = (req, res, next) => {
     const ip = req.headers['x-real-ip'] || req.connection.remoteAddress;
     const request = req.originalUrl;
-    logger.info(`[${ip}]: ${request}`);
+    const method = req.method;
+    const statusCode = res.statusCode;
+    logger.info(`[${ip}] ${method} ${request} ${statusCode}`);
     next();
 };
 

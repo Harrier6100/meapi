@@ -5,7 +5,7 @@ const logger = log4js.getLogger('error');
 const errorLogger = (req, res, next) => {
     const ip = req.headers['x-real-ip'] || req.connection.remoteAddress;
     const request = req.originalUrl;
-    logger.info(`[${ip}]: ${request}`);
+    logger.error(`[${ip}]: ${request}`);
     next();
 };
 

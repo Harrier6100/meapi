@@ -53,6 +53,7 @@ router.post('/token', async (req, res, next) => {
             httpOnly: true,
             secure: false,
             sameSite: 'Strict',
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
     
         res.json({
@@ -106,6 +107,7 @@ router.post('/token/refresh', async (req, res, next) => {
             httpOnly: true,
             secure: false,
             sameSite: 'Strict',
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
 
         res.status(200).json({

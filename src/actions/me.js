@@ -7,7 +7,7 @@ const User = require('@/models/user');
 const fetchUser = async (id) => {
     const user = await User.findOne({ id });
     if (!user) {
-        const error = new Error('アカウントが存在しません。');
+        const error = new Error('ユーザーが見つかりません。');
         error.status = 404;
         throw error;
     }

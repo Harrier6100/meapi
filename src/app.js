@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookie = require('cookie-parser');
 const compression = require('compression');
 const mongoose = require('mongoose');
 const cacheControl = require('@/middlewares/cacheControl');
@@ -14,10 +15,16 @@ mongoose.connection.on('error', (err) => {
     process.exit(1);
 });
 
+const corsOptions = {
+    origin: process.env.ORIGIN,
+    credentials: true,
+};
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors(corsOptions));
+app.use(cookie());
 app.use(compression());
 app.use(cacheControl);
 app.use(accessLogger);

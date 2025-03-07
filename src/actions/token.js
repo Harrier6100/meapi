@@ -4,8 +4,6 @@ const jsonwebtoken = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
 const User = require('@/models/user');
-const SECRET_KEY = process.env.SECRET_KEY;
-const REFRESH_KEY = process.env.REFRESH_KEY;
 
 const verifyExpiryDate = (expiryDate) => {
     const currentAt = moment().startOf('day');
@@ -17,57 +15,125 @@ const verifyExpiryDate = (expiryDate) => {
     }
 };
 
-const issueToken = (user) => {
-    const { id, name, role, expiryDate, permissions } = user;
-    const payload = { id, name, role, expiryDate, permissions };
-    return {
-        user: payload,
-        token: jsonwebtoken.sign(payload, SECRET_KEY, { expiresIn: '8h' }),
-        refreshToken: jsonwebtoken.sign(payload, REFRESH_KEY, { expiresIn: '7d' }),
-    };
+const generateAccessToken = (user) => {
+    return jsonwebtoken.sign(
+        { id: user.id },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: '1h'},
+    );
+};
+
+const generateRefreshToken = (user) => {
+    return jsonwebtoken.sign(
+        { id: user.id },
+        process.env.REFRESH_TOKEN_SECRET,
+        { expiresIn: '7d' },
+    );
 };
 
 router.post('/token', async (req, res, next) => {
-    const { id, password } = req.body;
     try {
+        const { id, password } = req.body;
+        
         const user = await User.findOne({ id });
-        const passwd = await bcrypt.compare(password, user ? user.password : '');
-        if (!user || !passwd) {
-            const error = new Error(`IDまたはパスワードが無効です。`);
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            const error = new Error('IDまたはパスワードが無効です。');
             error.status = 401;
             throw error;
         }
-        if (user.role && user.role === 'guest') {
+
+        if (user.role === 'guest') {
             verifyExpiryDate(user.expiryDate);
         }
-        const token = issueToken(user);
-        res.status(200).json(token);
+
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'Strict',
+        });
+    
+        res.json({
+            user: {
+                id: user.id,
+                name: user.name,
+                role: user.role,
+            },
+            token: accessToken
+        });
     } catch (err) {
         next(err);
     }
 });
 
 router.post('/token/refresh', async (req, res, next) => {
-    const { refreshToken } = req.body;
     try {
+        const refreshToken = req.cookies.refreshToken;
+        if (!refreshToken) {
+            const error = new Error('リフレッシュトークンがありません。');
+            error.status = 401;
+            throw error;
+        }
+
         const decoded = await new Promise((resolve, reject) => {
-            jsonwebtoken.verify(refreshToken, REFRESH_KEY, (err, decoded) => {
+            jsonwebtoken.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
                 if (err) {
-                    const error = new Error('トークンが無効です。');
+                    const error = new Error('リフレッシュトークンが無効です。');
                     error.status = 401;
                     return reject(error);
                 }
                 resolve(decoded);
             });
         });
-        if (decoded.role && decoded.role === 'guest') {
-            verifyExpiryDate(decoded.expiryDate);
+
+        const user = await User.findOne({ id: decoded.id });
+        if (!user) {
+            const error = new Error('ユーザーが見つかりません。');
+            error.status = 401;
+            throw error;
         }
-        const token = issueToken(decoded);
-        res.status(200).json(token);
+        
+        if (user.role === 'guest') {
+            verifyExpiryDate(user.expiryDate);
+        }
+
+        const newAccessToken = generateAccessToken(user);
+        const newRefreshToken = generateRefreshToken(user);
+
+        res.cookie('refreshToken', newRefreshToken, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'Strict',
+        });
+
+        res.status(200).json({
+            user: {
+                id: user.id,
+                name: user.name,
+                role: user.role,
+            },
+            token: newAccessToken
+        });
     } catch (err) {
         next(err);
     }
+});
+
+router.post('/token/clear', async (req, res, next) => {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+        return res.sendStatus(204);
+    }
+
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'Strict',
+    });
+
+    res.sendStatus(204);
 });
 
 module.exports = router;

@@ -36,7 +36,13 @@ router.post('/token', async (req, res, next) => {
         const { id, password } = req.body;
         
         const user = await User.findOne({ id });
-        if (!user || !(await bcrypt.compare(password, user.password))) {
+        if (!user) {
+            const error = new Error('IDまたはパスワードが無効です。');
+            error.status = 401;
+            throw error;
+        }
+
+        if (!(await bcrypt.compare(password, user.password))) {
             const error = new Error('IDまたはパスワードが無効です。');
             error.status = 401;
             throw error;

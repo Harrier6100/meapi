@@ -1,5 +1,4 @@
 const jsonwebtoken = require('jsonwebtoken');
-const SECRET_KEY = process.env.SECRET_KEY;
 
 const verifyToken = (req, res, next) => {
     try {
@@ -11,7 +10,7 @@ const verifyToken = (req, res, next) => {
             throw error;
         }
 
-        jsonwebtoken.verify(token, SECRET_KEY, (err, decoded) => {
+        jsonwebtoken.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
             if (err) {
                 const error = new Error('トークンが無効です。');
                 error.status = 401;
